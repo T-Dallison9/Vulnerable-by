@@ -1,57 +1,70 @@
 # ------------------------------------------------------------
-# app.py
-# VULNERABLE APPLICATION
-# Used to validate Bandit GitHub Actions workflow
+# app_secure.py
+# SECURE VERSION OF APPLICATION
 # ------------------------------------------------------------
 
 import hashlib
-import random
+import secrets
 import subprocess
 import os
 import tempfile
 
-# ------------------------------------------------------------
-# B105 – Hardcoded password (MEDIUM)
-# ------------------------------------------------------------
-DB_PASSWORD = "admin123"
 
 # ------------------------------------------------------------
-# B107 – Hardcoded default password argument (MEDIUM)
+# Secure way: Use environment variable for password
 # ------------------------------------------------------------
-def authenticate(user, password="password"):
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+
+if DB_PASSWORD is None:
+    raise ValueError("Database password not set in environment variables")
+
+
+# ------------------------------------------------------------
+# No hardcoded default password
+# ------------------------------------------------------------
+def authenticate(user, password):
     if password == DB_PASSWORD:
         print("Authenticated")
     else:
         print("Access denied")
 
-# ------------------------------------------------------------
-# B303 – Weak cryptographic hash (MD5) (MEDIUM)
-# ------------------------------------------------------------
-def weak_hash(data):
-    return hashlib.md5(data.encode()).hexdigest()
 
 # ------------------------------------------------------------
-# B311 – Insecure random for security purposes (LOW)
+# Strong cryptographic hash (SHA-256 instead of MD5)
 # ------------------------------------------------------------
-def insecure_token():
-    return random.random()
+def secure_hash(data):
+    return hashlib.sha256(data.encode()).hexdigest()
+
 
 # ------------------------------------------------------------
-# B602 – subprocess with shell=True (HIGH)
+# Secure random token generator
 # ------------------------------------------------------------
-def dangerous_command(cmd):
-    subprocess.call(cmd, shell=True)
+def secure_token():
+    return secrets.token_hex(16)
+
 
 # ------------------------------------------------------------
-# B108 – Hardcoded temporary file path (LOW)
+# Safe subprocess usage (no shell=True)
 # ------------------------------------------------------------
-temp_path = "/tmp/app_temp_file.txt"
+def safe_command(cmd_list):
+    subprocess.run(cmd_list, check=True)
+
 
 # ------------------------------------------------------------
-# Execute vulnerable code
+# Secure temporary file handling
+# ------------------------------------------------------------
+def create_temp_file():
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        tmp.write(b"Temporary data")
+        return tmp.name
+
+
+# ------------------------------------------------------------
+# Execute secure code
 # ------------------------------------------------------------
 if __name__ == "__main__":
-    authenticate("admin")
-    print(weak_hash(DB_PASSWORD))
-    print(insecure_token())
-    dangerous_command("echo Bandit test")
+    authenticate("admin", DB_PASSWORD)
+    print(secure_hash(DB_PASSWORD))
+    print(secure_token())
+    safe_command(["echo", "Bandit secure test"])
+    print("Temporary file created at:", create_temp_file())

@@ -1,0 +1,82 @@
+# ------------------------------------------------------------
+# Workflow name shown in GitHub Actions UI
+# ------------------------------------------------------------
+name: Bandit Security Scan
+
+# ------------------------------------------------------------
+# Run on every push to main or on pull requests
+# ------------------------------------------------------------
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+# ------------------------------------------------------------
+# Define the job
+# ------------------------------------------------------------
+jobs:
+  bandit:
+    runs-on: ubuntu-latest
+
+    steps:
+      # --------------------------------------------------------
+      # Step 1: Checkout repository code
+      # Pulls your repo content into the runner
+      # --------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------------
+      # Step 2: Set up Python
+      # Bandit requires Python to run
+      # --------------------------------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # --------------------------------------------------------
+      # Step 3: Install Bandit
+      # Upgrade pip and install Bandit security scanner
+      # --------------------------------------------------------
+      - name: Install Bandit
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit
+
+      # --------------------------------------------------------
+      # Step 4: Debug – list repository files
+      # Optional but useful to verify files exist in runner
+      # --------------------------------------------------------
+      - name: Debug - list repository files
+        run: |
+          ls -R
+
+      # --------------------------------------------------------
+      # Step 5: Generate Bandit HTML report
+      # - Recursive scan of all Python files
+      # - Verbose output
+      # - HTML report created even if issues exist
+      # - || true prevents early exit
+      # --------------------------------------------------------
+      - name: Generate Bandit HTML Report
+        run: |
+          bandit -r . -v -f html -o bandit-report.html || true
+
+      # --------------------------------------------------------
+      # Step 6: Upload the HTML report as artifact
+      # Allows downloading from GitHub Actions UI
+      # --------------------------------------------------------
+      - name: Upload Bandit HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-html-report
+          path: bandit-report.html
+
+      # --------------------------------------------------------
+      # Step 7: Enforce security policy
+      # - Fail workflow on Medium+ severity issues
+      # --------------------------------------------------------
+      - name: Enforce Bandit Policy (Fail on Medium+)
+        run: |
+          bandit -r . -ll
